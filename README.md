@@ -49,10 +49,6 @@ streamlit run app.py
    - Branch: `main` atau sesuai repo
 5. Klik **Deploy**
 
-## 📷 Screenshot
-
-![demo](https://via.placeholder.com/800x400?text=Contoh+Tampilan+Aplikasi)
-
 ## 📦 Requirements
 
 File `requirements.txt`:
@@ -71,10 +67,6 @@ seaborn
 3. Model dilatih berdasarkan pilihan pengguna
 4. Input pengguna diproses dan diprediksi
 5. Label hasil dipetakan ke deskripsi yang mudah dimengerti
-
-## 🧑‍💻 Kontributor
-
-- Nama Anda – [GitHub Anda](https://github.com/username)
 
 ## 📄 Lisensi
 
