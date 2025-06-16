@@ -1,157 +1,99 @@
 import streamlit as st
+import pickle
+import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix
-from sklearn.model_selection import train_test_split
-import io
 
-# Load dataset
-@st.cache_data
-def load_data():
-    return pd.read_csv("ObesityDataSet.csv")
+# ------------------ CONFIGURASI HALAMAN ------------------
+st.set_page_config(page_title="Prediksi Obesitas", layout="centered")
 
-# Preprocessing function
-def preprocess_data(df):
-    df_encoded = df.copy()
-    label_encoders = {}
-    for col in df_encoded.select_dtypes(include='object').columns:
-        le = LabelEncoder()
-        df_encoded[col] = le.fit_transform(df_encoded[col])
-        label_encoders[col] = le
-    return df_encoded, label_encoders
-
-# Train model
-def train_model(X, y, model_type):
-    if model_type == "Random Forest":
-        model = RandomForestClassifier(random_state=42)
-    elif model_type == "Logistic Regression":
-        model = LogisticRegression(max_iter=1000)
-    elif model_type == "KNN":
-        model = KNeighborsClassifier(n_neighbors=5)
-    elif model_type == "Decision Tree":
-        model = DecisionTreeClassifier(random_state=42)
-    else:
-        model = LogisticRegression(max_iter=1000)
-    model.fit(X, y)
-    return model
-
-# Mapping hasil prediksi ke label yang lebih ramah pengguna
-prediksi_label_map = {
-    "Insufficient_Weight": "Berat Badan Kurang",
-    "Normal_Weight": "Normal Height",
-    "Overweight_Level_I": "Sedikit Gemuk",
-    "Overweight_Level_II": "Gemuk",
-    "Obesity_Type_I": "Obesitas Ringan",
-    "Obesity_Type_II": "Obesitas Sedang",
-    "Obesity_Type_III": "Obesitas Parah"
-}
-
-# Aplikasi Streamlit
-st.set_page_config(page_title="Prediksi Obesitas", layout="wide")
-
-# Custom styling
+# ------------------ CUSTOM CSS TEMA PINK ------------------
 st.markdown("""
     <style>
-    .main {
-        background-color: #f0f2f6;
-        padding: 20px;
-        border-radius: 10px;
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-        border-radius: 10px;
-        padding: 10px 24px;
-    }
-    .stDownloadButton>button {
-        background-color: #2196F3;
-        color: white;
-        border-radius: 10px;
-    }
+        .main {
+            background-color: #ffe6f0;
+        }
+        div.block-container {
+            background-color: #fff0f5;
+            padding: 2rem 2rem;
+            border-radius: 15px;
+            color: #333333;
+        }
+        .stButton>button {
+            background-color: #ff69b4;
+            color: #333333;
+            font-weight: bold;
+            padding: 0.5em 1.5em;
+            border: none;
+            border-radius: 10px;
+        }
+        .stButton>button:hover {
+            background-color: #ff1493;
+            color: white;
+        }
+        h1, h3, h4 {
+            color: #a1005a;
+        }
+        p, label, .stSelectbox, .stSlider, .stNumberInput {
+            color: #333333 !important;
+            font-size: 16px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🩺 Prediksi Obesitas Berdasarkan Gaya Hidup")
-st.write("Gunakan aplikasi ini untuk memprediksi kemungkinan obesitas berdasarkan data kesehatan dan gaya hidup Anda.")
+# ------------------ JUDUL HALAMAN ------------------
+st.markdown("<h1 style='text-align: center;'>🌸 Prediksi Kategori Obesitas</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Masukkan informasi diri Anda di bawah ini untuk mengetahui prediksi tingkat obesitas menggunakan model terbaik kami.</p>", unsafe_allow_html=True)
+st.markdown("---")
 
-# Load dan proses data
-data = load_data()
-df_encoded, label_encoders = preprocess_data(data)
-X = df_encoded.drop("NObeyesdad", axis=1)
-y = df_encoded["NObeyesdad"]
+# ------------------ LOAD MODEL & SCALER ------------------
+model = pickle.load(open("dt_model.sav", "rb"))
+scaler = pickle.load(open("scaler.pkl", "rb"))
+feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# ------------------ FORM INPUT ------------------
+st.markdown("### 💖 Data Diri Anda")
 
-# Sidebar untuk kontrol
-st.sidebar.header("⚙️ Konfigurasi Model")
-model_choice = st.sidebar.selectbox("Pilih Model", ["Random Forest", "Logistic Regression", "KNN", "Decision Tree"])
+col1, col2 = st.columns(2)
+with col1:
+    gender = st.selectbox("👩‍⚕️ Jenis Kelamin", ["Male", "Female"])
+    age = st.number_input("🎂 Umur", min_value=1, max_value=100, value=25)
+    height = st.number_input("📏 Tinggi Badan (meter)", min_value=1.0, max_value=2.5, value=1.65)
+    weight = st.number_input("⚖️ Berat Badan (kg)", min_value=20.0, max_value=150.0, value=60.0)
+    family_history = st.selectbox("👨‍👩‍👧‍👦 Riwayat Keluarga Gemuk?", ["yes", "no"])
+    FAVC = st.selectbox("🍟 Makanan Kalori Tinggi?", ["yes", "no"])
+    FCVC = st.slider("🥗 Frekuensi Makan Sayur", 1.0, 3.0, 2.0)
 
-# Latih model
-model = train_model(X_train, y_train, model_choice)
-y_pred = model.predict(X_test)
-acc = accuracy_score(y_test, y_pred)
-cm = confusion_matrix(y_test, y_pred)
+with col2:
+    NCP = st.slider("🍱 Makan per Hari", 1.0, 4.0, 3.0)
+    CAEC = st.selectbox("🍩 Camilan Setelah Makan", ["no", "Sometimes", "Frequently", "Always"])
+    SMOKE = st.selectbox("🚬 Merokok?", ["yes", "no"])
+    CH2O = st.slider("💧 Air per Hari (L)", 0.0, 3.0, 2.0)
+    SCC = st.selectbox("🔍 Sadar Kalori?", ["yes", "no"])
+    FAF = st.slider("🏃 Aktivitas Fisik (jam/minggu)", 0.0, 3.0, 1.0)
+    TUE = st.slider("📺 Waktu Layar (jam/hari)", 0.0, 2.0, 1.0)
+    CALC = st.selectbox("🍷 Konsumsi Alkohol", ["no", "Sometimes", "Frequently", "Always"])
+    MTRANS = st.selectbox("🚗 Transportasi Utama", ["Public_Transportation", "Walking", "Automobile", "Motorbike", "Bike"])
 
-# Tampilan Prediksi
-st.header("📥 Input Data Pengguna")
-user_input = {}
-with st.form(key='prediction_form'):
-    cols = st.columns(3)
-    for i, col in enumerate(X.columns):
-        with cols[i % 3]:
-            if data[col].dtype == 'object':
-                user_input[col] = st.selectbox(col, options=data[col].unique(), key=col)
-            else:
-                user_input[col] = st.slider(col, float(data[col].min()), float(data[col].max()), float(data[col].mean()), key=col)
-    submitted = st.form_submit_button("Prediksi")
+# ------------------ PREDIKSI ------------------
+st.markdown("---")
+if st.button("💗 Prediksi Sekarang"):
+    input_data = pd.DataFrame([[gender, age, height, weight, family_history, FAVC, FCVC,
+                                NCP, CAEC, SMOKE, CH2O, SCC, FAF, TUE, CALC, MTRANS]],
+                              columns=["Gender", "Age", "Height", "Weight", "family_history_with_overweight",
+                                       "FAVC", "FCVC", "NCP", "CAEC", "SMOKE", "CH2O", "SCC",
+                                       "FAF", "TUE", "CALC", "MTRANS"])
 
-if submitted:
-    input_df = pd.DataFrame([user_input])
-    for col in input_df.columns:
-        if input_df[col].dtype == 'object':
-            le = label_encoders[col]
-            input_df[col] = le.transform(input_df[col])
+    input_data = pd.get_dummies(input_data)
+    for col in feature_columns:
+        if col not in input_data.columns:
+            input_data[col] = 0
+    input_data = input_data[feature_columns]
 
-    prediction = model.predict(input_df)[0]
-    prediction_label = label_encoders['NObeyesdad'].inverse_transform([prediction])[0]
-    hasil_akhir = prediksi_label_map.get(prediction_label, prediction_label)
+    input_scaled = scaler.transform(input_data)
+    prediction = model.predict(input_scaled)[0]
 
-    st.success(f"✅ Hasil Prediksi: **{hasil_akhir}**")
+    st.success(f"🌟 Hasil Prediksi Anda: **{prediction}**")
+    st.info("Model ini menggunakan algoritma Decision Tree yang telah dituning untuk memberikan prediksi yang akurat.")
 
-    # Unduh hasil
-    csv = input_df.copy()
-    csv['Prediksi'] = hasil_akhir
-    csv_download = csv.to_csv(index=False).encode('utf-8')
-    st.download_button("⬇️ Unduh Hasil Prediksi", data=csv_download, file_name="prediksi_obesitas.csv", mime='text/csv')
-
-# Statistik Ringkasan
-with st.expander("📊 Statistik Ringkasan"):
-    st.write(data.describe())
-    st.write("Missing Values:", data.isnull().sum())
-
-# Visualisasi
-with st.expander("📈 Visualisasi Data (EDA)"):
-    st.subheader("Distribusi Obesitas")
-    fig, ax = plt.subplots()
-    sns.countplot(data=data, x="NObeyesdad", order=data['NObeyesdad'].value_counts().index, ax=ax, palette="pastel")
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
-
-    st.subheader("Heatmap Korelasi")
-    corr = df_encoded.corr()
-    fig2, ax2 = plt.subplots(figsize=(12, 8))
-    sns.heatmap(corr, annot=False, cmap='coolwarm', ax=ax2)
-    st.pyplot(fig2)
-
-# Evaluasi Model
-with st.expander("📉 Evaluasi Model"):
-    st.metric("Akurasi", f"{acc:.2%}")
-    st.write("Confusion Matrix:")
-    st.dataframe(pd.DataFrame(cm))
+    st.markdown("---")
+    st.markdown("<p style='text-align: center; font-size: 14px;'>© 2025 | Prediksi Obesitas by Aneira Vicentiya</p>", unsafe_allow_html=True)
